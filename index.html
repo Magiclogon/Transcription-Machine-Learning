@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Darija Transcription</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@300;400&family=Noto+Naskh+Arabic:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg:      #ffffff;
+      --surface: #f7f7f6;
+      --border:  #e5e4e1;
+      --text:    #1a1a18;
+      --muted:   #9a9890;
+      --red:     #c0392b;
+      --green:   #2d6a4f;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Geist Mono', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 64px 20px 80px;
+    }
+
+    /* Header */
+    header {
+      width: 100%;
+      max-width: 560px;
+      margin-bottom: 52px;
+    }
+
+    .eyebrow {
+      font-size: 10px;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-family: 'Instrument Serif', serif;
+      font-size: 2.6rem;
+      font-weight: 400;
+      line-height: 1.1;
+      letter-spacing: -.01em;
+    }
+
+    h1 em { font-style: italic; color: var(--muted); }
+
+    /* App */
+    .app { width: 100%; max-width: 560px; }
+
+    .section { margin-bottom: 32px; }
+
+    .section-label {
+      font-size: 10px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* Waveform */
+    .waveform-wrap {
+      height: 56px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    #waveCanvas { width: 100%; height: 100%; display: block; }
+
+    .wave-idle {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; letter-spacing: .12em; color: var(--border);
+      pointer-events: none; transition: opacity .25s;
+    }
+    .wave-idle.hidden { opacity: 0; }
+
+    /* Record button */
+    .record-row { display: flex; align-items: center; gap: 14px; }
+
+    #recordBtn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: border-color .2s;
+    }
+
+    #recordBtn:hover { border-color: var(--text); }
+    #recordBtn.recording { border-color: var(--red); color: var(--red); }
+
+    .rec-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background .2s;
+      flex-shrink: 0;
+    }
+
+    #recordBtn.recording .rec-dot {
+      background: var(--red);
+      animation: blink 1s step-start infinite;
+    }
+
+    @keyframes blink { 50% { opacity: 0; } }
+
+    #recTimer {
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      font-size: 11px;
+      min-width: 36px;
+    }
+    #recTimer.active { color: var(--red); }
+
+    /* Divider */
+    .divider {
+      display: flex; align-items: center; gap: 14px;
+      color: var(--border); font-size: 9px;
+      letter-spacing: .2em; text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* Drop zone */
+    .drop-zone {
+      position: relative;
+      border: 1px dashed var(--border);
+      border-radius: 3px;
+      padding: 32px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .drop-zone:hover, .drop-zone.over {
+      border-color: var(--text);
+      background: var(--surface);
+    }
+    .drop-zone input {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer;
+      width: 100%; height: 100%;
+    }
+    .drop-main { font-size: 12px; color: var(--text); margin-bottom: 6px; }
+    .drop-formats { font-size: 9px; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); }
+
+    /* File pill */
+    .file-pill {
+      display: none; align-items: center; gap: 10px;
+      margin-top: 10px; padding: 8px 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 3px;
+    }
+    .file-pill.show { display: flex; }
+    .file-pill-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+    .file-pill-size { color: var(--muted); font-size: 10px; }
+
+    /* Audio */
+    .audio-wrap { display: none; margin-top: 10px; }
+    .audio-wrap.show { display: block; }
+    audio { width: 100%; height: 28px; border-radius: 2px; }
+
+    /* Transcribe */
+    #transcribeBtn {
+      width: 100%;
+      padding: 13px;
+      background: var(--text);
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: opacity .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    #transcribeBtn:disabled { opacity: .25; cursor: not-allowed; }
+
+    .spinner {
+      width: 12px; height: 12px;
+      border: 1.5px solid rgba(255,255,255,.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    .spinner.show { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error */
+    .error {
+      display: none;
+      padding: 12px 14px;
+      background: #fdf2f2;
+      border: 1px solid #f5c6c3;
+      border-radius: 3px;
+      color: var(--red);
+      font-size: 11px;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    .error.show { display: block; }
+
+    /* Result */
+    #resultPanel {
+      display: none;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .35s ease, transform .35s ease;
+      border-top: 1px solid var(--border);
+      padding-top: 28px;
+      margin-top: 8px;
+    }
+    #resultPanel.show { opacity: 1; transform: none; }
+
+    .result-header {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 14px;
+    }
+    .result-label {
+      font-size: 10px; letter-spacing: .18em; text-transform: uppercase;
+      color: var(--muted); display: flex; align-items: center; gap: 7px;
+    }
+    .ok-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+    .result-meta { font-size: 10px; color: var(--muted); }
+
+    #transcriptionText {
+      font-family: 'Noto Naskh Arabic', serif;
+      font-size: 1.35rem;
+      line-height: 2;
+      direction: rtl;
+      text-align: right;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+      padding: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      margin-bottom: 10px;
+    }
+
+    #copyBtn {
+      padding: 7px 14px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color .2s, color .2s;
+    }
+    #copyBtn:hover { border-color: var(--text); color: var(--text); }
+    #copyBtn.copied { border-color: var(--green); color: var(--green); }
+
+    /* Footer */
+    footer {
+      margin-top: 48px;
+      font-size: 10px;
+      color: var(--border);
+      letter-spacing: .1em;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .health-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border); transition: background .3s; }
+    .health-dot.ok  { background: var(--green); }
+    .health-dot.err { background: var(--red); }
+
+    /* Fade-in */
+    header, .section, .divider, #transcribeBtn {
+      animation: up .4s ease both;
+    }
+    .section:nth-child(2) { animation-delay: .06s; }
+    .divider              { animation-delay: .1s; }
+    .section:nth-child(4) { animation-delay: .13s; }
+    #transcribeBtn        { animation-delay: .16s; }
+
+    @keyframes up {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow">Moroccan Arabic · Whisper ASR</p>
+  <h1>Darija <em>Transcription</em></h1>
+</header>
+
+<div class="app">
+
+  <div class="section">
+    <p class="section-label">Record audio</p>
+    <div class="waveform-wrap">
+      <canvas id="waveCanvas"></canvas>
+      <div class="wave-idle" id="waveIdle">no signal</div>
+    </div>
+    <div class="record-row">
+      <button id="recordBtn">
+        <span class="rec-dot"></span>
+        <span id="recordLabel">Start recording</span>
+      </button>
+      <span id="recTimer">0:00</span>
+    </div>
+    <div class="audio-wrap" id="recordedWrap">
+      <audio id="recordedAudio" controls></audio>
+    </div>
+  </div>
+
+  <div class="divider">or</div>
+
+  <div class="section">
+    <p class="section-label">Upload file</p>
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".wav,.mp3,.ogg,.flac,.m4a,.webm" />
+      <p class="drop-main">Drop file here or click to browse</p>
+      <p class="drop-formats">wav · mp3 · ogg · flac · m4a · webm</p>
+    </div>
+    <div class="file-pill" id="filePill">
+      <span class="file-pill-name" id="fileName"></span>
+      <span class="file-pill-size" id="fileSize"></span>
+    </div>
+    <div class="audio-wrap" id="uploadedWrap">
+      <audio id="uploadedAudio" controls></audio>
+    </div>
+  </div>
+
+  <div class="error" id="errorBox"></div>
+
+  <button id="transcribeBtn" disabled>
+    <div class="spinner" id="spinner"></div>
+    <span id="transcribeLabel">Transcribe</span>
+  </button>
+
+  <div id="resultPanel">
+    <div class="result-header">
+      <span class="result-label"><span class="ok-dot"></span>Transcription</span>
+      <span class="result-meta" id="durLabel"></span>
+    </div>
+    <div id="transcriptionText"></div>
+    <button id="copyBtn">Copy</button>
+  </div>
+
+</div>
+
+<footer>
+  <span class="health-dot" id="healthDot"></span>
+  <span id="healthLabel">checking…</span>
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const recordBtn       = $("recordBtn"), recordLabel = $("recordLabel"), recTimer = $("recTimer");
+const recordedAudio   = $("recordedAudio"), recordedWrap = $("recordedWrap");
+const waveCanvas      = $("waveCanvas"), waveIdle = $("waveIdle");
+const ctx2d           = waveCanvas.getContext("2d");
+const dropZone        = $("dropZone"), fileInput = $("fileInput");
+const uploadedAudio   = $("uploadedAudio"), uploadedWrap = $("uploadedWrap");
+const filePill        = $("filePill"), fileName = $("fileName"), fileSize = $("fileSize");
+const transcribeBtn   = $("transcribeBtn"), transcribeLabel = $("transcribeLabel"), spinner = $("spinner");
+const errorBox        = $("errorBox"), resultPanel = $("resultPanel");
+const transcriptionText = $("transcriptionText"), durLabel = $("durLabel"), copyBtn = $("copyBtn");
+const healthDot       = $("healthDot"), healthLabel = $("healthLabel");
+
+let mediaRecorder = null, chunks = [], audioBlob = null, audioFile = null;
+let timerInterval = null, timerSecs = 0;
+let animFrame = null, audioCtx = null, analyser = null;
+
+/* Health */
+fetch("/health").then(r => r.json()).then(d => {
+  healthDot.className = "health-dot ok";
+  healthLabel.textContent = `model ready · ${d.device}`;
+}).catch(() => {
+  healthDot.className = "health-dot err";
+  healthLabel.textContent = "server unreachable";
+});
+
+/* Canvas */
+function resizeCanvas() {
+  const p = waveCanvas.parentElement;
+  waveCanvas.width  = p.clientWidth  * devicePixelRatio;
+  waveCanvas.height = p.clientHeight * devicePixelRatio;
+}
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+
+function drawBaseline() {
+  const W = waveCanvas.width / devicePixelRatio, H = waveCanvas.height / devicePixelRatio;
+  ctx2d.clearRect(0, 0, W, H);
+  ctx2d.strokeStyle = "#e5e4e1"; ctx2d.lineWidth = 1;
+  ctx2d.beginPath(); ctx2d.moveTo(0, H/2); ctx2d.lineTo(W, H/2); ctx2d.stroke();
+}
+drawBaseline();
+
+function drawWave(data) {
+  const W = waveCanvas.width / devicePixelRatio, H = waveCanvas.height / devicePixelRatio;
+  ctx2d.clearRect(0, 0, W, H);
+  ctx2d.strokeStyle = "#1a1a18"; ctx2d.lineWidth = 1.2;
+  ctx2d.beginPath();
+  const sl = W / data.length;
+  let x = 0;
+  for (let i = 0; i < data.length; i++) {
+    const y = (data[i] / 128) * H / 2;
+    i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
+    x += sl;
+  }
+  ctx2d.lineTo(W, H/2); ctx2d.stroke();
+}
+
+function startWave(stream) {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser(); analyser.fftSize = 512;
+  audioCtx.createMediaStreamSource(stream).connect(analyser);
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  waveIdle.classList.add("hidden");
+  (function loop() { animFrame = requestAnimationFrame(loop); analyser.getByteTimeDomainData(data); drawWave(data); })();
+}
+
+function stopWave() {
+  if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+  if (audioCtx)  { audioCtx.close(); audioCtx = null; }
+  waveIdle.classList.remove("hidden"); drawBaseline();
+}
+
+function startTimer() {
+  timerSecs = 0; recTimer.textContent = "0:00"; recTimer.classList.add("active");
+  timerInterval = setInterval(() => {
+    timerSecs++;
+    recTimer.textContent = `${Math.floor(timerSecs/60)}:${String(timerSecs%60).padStart(2,"0")}`;
+  }, 1000);
+}
+function stopTimer() { clearInterval(timerInterval); recTimer.classList.remove("active"); }
+
+/* Record */
+recordBtn.addEventListener("click", async () => {
+  if (mediaRecorder?.state === "recording") { mediaRecorder.stop(); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    chunks = []; mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      stopWave(); stopTimer();
+      audioBlob = new Blob(chunks, { type: "audio/webm" }); audioFile = null;
+      recordedAudio.src = URL.createObjectURL(audioBlob);
+      recordedWrap.classList.add("show");
+      clearUpload();
+      recordBtn.classList.remove("recording");
+      recordLabel.textContent = "Start recording";
+      transcribeBtn.disabled = false;
+    };
+    startWave(stream); startTimer();
+    mediaRecorder.start();
+    recordBtn.classList.add("recording");
+    recordLabel.textContent = "Stop recording";
+    transcribeBtn.disabled = true;
+  } catch { showError("Microphone access denied."); }
+});
+
+/* Upload */
+function handleFile(f) {
+  if (!f) return;
+  audioFile = f; audioBlob = null;
+  uploadedAudio.src = URL.createObjectURL(f);
+  uploadedWrap.classList.add("show");
+  filePill.classList.add("show");
+  fileName.textContent = f.name;
+  fileSize.textContent = fmtBytes(f.size);
+  clearRecording();
+  transcribeBtn.disabled = false; clearError();
+}
+function clearUpload() { fileInput.value=""; filePill.classList.remove("show"); uploadedWrap.classList.remove("show"); uploadedAudio.src=""; }
+function clearRecording() { recordedWrap.classList.remove("show"); recordedAudio.src=""; }
+
+fileInput.addEventListener("change", () => handleFile(fileInput.files[0]));
+dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("over"); });
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("over"));
+dropZone.addEventListener("drop", e => { e.preventDefault(); dropZone.classList.remove("over"); handleFile(e.dataTransfer.files[0]); });
+
+/* Transcribe */
+transcribeBtn.addEventListener("click", async () => {
+  clearError();
+  resultPanel.classList.remove("show"); resultPanel.style.display = "none";
+  setBusy(true);
+  const fd = new FormData();
+  if (audioFile) fd.append("file", audioFile, audioFile.name);
+  else if (audioBlob) fd.append("file", audioBlob, "recording.webm");
+  else { setBusy(false); return; }
+  try {
+    const res = await fetch("/transcribe", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || res.statusText);
+    transcriptionText.textContent = data.transcription || "(empty)";
+    durLabel.textContent = data.duration_seconds ? `${data.duration_seconds}s` : "";
+    resultPanel.style.display = "block";
+    requestAnimationFrame(() => resultPanel.classList.add("show"));
+    copyBtn.textContent = "Copy"; copyBtn.classList.remove("copied");
+  } catch(e) { showError("Error: " + e.message); }
+  finally { setBusy(false); }
+});
+
+/* Copy */
+copyBtn.addEventListener("click", () => {
+  navigator.clipboard.writeText(transcriptionText.textContent).then(() => {
+    copyBtn.textContent = "Copied"; copyBtn.classList.add("copied");
+    setTimeout(() => { copyBtn.textContent = "Copy"; copyBtn.classList.remove("copied"); }, 2000);
+  });
+});
+
+function setBusy(on) { transcribeBtn.disabled = on; spinner.classList.toggle("show", on); transcribeLabel.textContent = on ? "Transcribing…" : "Transcribe"; }
+function showError(msg) { errorBox.textContent = msg; errorBox.classList.add("show"); }
+function clearError() { errorBox.classList.remove("show"); errorBox.textContent = ""; }
+function fmtBytes(b) { if (b<1024) return b+" B"; if (b<1048576) return (b/1024).toFixed(1)+" KB"; return (b/1048576).toFixed(1)+" MB"; }
+</script>
+</body>
+</html>
