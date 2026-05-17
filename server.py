@@ -11,8 +11,8 @@ from transformers import WhisperProcessor, WhisperForConditionalGeneration
 
 MODEL_DIR  = "./whisper-small-darija"
 TARGET_SR  = 16_000
-MAX_BYTES  = 50 * 1024 * 1024          # 50 MB upload limit
-MAX_DURATION_S = 300                   # 5 minutes max audio length
+MAX_BYTES  = 50 * 1024 * 1024          
+MAX_DURATION_S = 300                  
 SUPPORTED_EXT  = {".wav", ".mp3", ".ogg", ".flac", ".m4a", ".webm"}
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
